@@ -1,15 +1,15 @@
-from functions.write_file import write_file
+from functions.run_python import run_python_file
 
 
 if __name__ == "__main__":
-    print("Result for  calc loremt.txt test:")
-    print(write_file("calculator", "lorem.txt", "wait, this isn't lorem ipsum"))
+    print("Result for  calc main.py test:")
+    print(run_python_file("calculator", "main.py"))
 
-    print("Result for calc / pkg test:")
-    print(write_file("calculator", "pkg/moerlorem.txt", "lorem ipsum dolor sit amet"))
+    print("Result for calc tests.py test:")
+    print(run_python_file("calculator", "tests.py"))
 
-    print("Result for /tmp/temp.txt test:")
-    print(write_file("calculator", "/tmp/temp.txt", "this should not be allowed"))
+    print("Result for calc ../main.py test:")
+    print(run_python_file("calculator", "../main.py"))
 
-    #print("Result for '../' directory:")
-    #print(get_files_info("calculator", "../"))
+    print("Result for calc nonexistent.py test:")
+    print(run_python_file("calculator", "nonexistent.py"))
