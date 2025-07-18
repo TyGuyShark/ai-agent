@@ -4,9 +4,12 @@ from google.generativeai import types
 
 
 def get_files_info(working_directory, directory=None):
+    if directory is None:
+        directory = ""
     full_path = os.path.join(working_directory, directory)
     working_dir_abs = os.path.abspath(working_directory)
     target_path_abs = os.path.abspath(full_path)
+
     if not target_path_abs.startswith(working_dir_abs):
         return f'Error: Cannot list "{directory}" as it is outside the permitted working directory'
     if not os.path.isdir(target_path_abs):

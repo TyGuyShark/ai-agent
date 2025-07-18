@@ -1,6 +1,9 @@
 import os
 import fnmatch
 import subprocess
+import google.generativeai as genai
+from google.generativeai import types
+
 
 def run_python_file(working_directory, file_path):
     full_path = os.path.join(working_directory, file_path)
@@ -34,3 +37,18 @@ def run_python_file(working_directory, file_path):
     except Exception as e:
         error_message = str(e)
         return f'Error: executing Python file: {error_message}'
+
+schema_run_python_file = types.FunctionDeclaration(
+    name="run_python_file",
+    description="Runs python file and prints out stdeout and stderr, constrained to the working directory.",
+    parameters={
+        "type": "OBJECT",
+        "properties": {
+            "file_path": {
+                "type": "STRING",
+                "description": "The python file to run, constrained to the working directory. If not provided, no output produced."
+            },
+        },
+        "required": []
+    },
+)

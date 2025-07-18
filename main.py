@@ -1,7 +1,11 @@
 import os
 import sys
 import json
+from functions.call_function import call_function
 from functions.get_files_info import schema_get_files_info
+from functions.get_file_content import schema_get_file_content
+from functions.run_python_file import schema_run_python_file
+from functions.write_file import schema_write_file
 from dotenv import load_dotenv
 import google.generativeai as genai
 from google.generativeai import types
@@ -18,6 +22,9 @@ def main():
     When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
 
     - List files and directories
+    - Read file contents
+    - Execute Python files with optional arguments
+    - Write or overwrite files
 
     All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
     """
@@ -32,6 +39,9 @@ def main():
     available_functions = types.Tool(
         function_declarations=[
             schema_get_files_info,
+            schema_get_file_content,
+            schema_run_python_file,
+            schema_write_file
         ]
     )
 
@@ -59,33 +69,25 @@ def main():
         for part in candidate.content.parts:
             if hasattr(part, 'function_call'):
                 function_calls_found = True
-                # Try multiple ways to access the args
-                args = part.function_call.args
 
-                # Method 1: Try treating it as a dict
-                try:
-                    args_dict = dict(args)
-                    print(f"Calling function: {part.function_call.name}({args_dict})")
-                    continue
-                except:
-                    pass
+                # Check if verbose is enabled
+                verbose = len(sys.argv) > 2 and sys.argv[2] == "--verbose"
 
-                # Method 2: Try accessing specific keys
-                try:
-                    args_dict = {}
-                    for key in ['directory']:
-                        if key in args:
-                            args_dict[key] = args[key]
-                    print(f"Calling function: {part.function_call.name}({args_dict})")
-                    continue
-                except:
-                    pass
+                # Call the function
+                function_call_result = call_function(part.function_call, verbose)
 
-                # Method 3: Debug - see what methods/attributes are available
-                print(f"Args type: {type(args)}")
-                print(f"Args dir: {[attr for attr in dir(args) if not attr.startswith('_')]}")
-                print(f"Calling function: {part.function_call.name}({args})")
+                # Handle the result according to the lesson requirements
+                if not function_call_result.parts[0].function_response.response:
+                    raise Exception("Function call failed to return a response")
 
+                if verbose:
+                    result_obj = function_call_result.parts[0].function_response.response
+                    if "result" in result_obj:
+                        print(f"-> {result_obj['result']}")
+                    elif "error" in result_obj:
+                        print(f"-> ERROR: {result_obj['error']}")
+                    else:
+                        print(f"-> Unknown response: {result_obj}")
     if not function_calls_found:
         print(response.text)
 

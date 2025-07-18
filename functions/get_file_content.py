@@ -1,5 +1,8 @@
 import os
 from config import MAX_CHARS
+import google.generativeai as genai
+from google.generativeai import types
+
 
 def get_file_content(working_directory, file_path):
     full_path = os.path.join(working_directory, file_path)
@@ -22,3 +25,18 @@ def get_file_content(working_directory, file_path):
     except Exception as e:
         error_message = str(e)
         return f'Error: {error_message}'
+
+schema_get_file_content = types.FunctionDeclaration(
+    name="get_file_content",
+    description="Lists content in the specified file up to 10000 characters, constrained to the working directory.",
+    parameters={
+        "type": "OBJECT",
+        "properties": {
+            "file_path": {
+                "type": "STRING",
+                "description": "The file to list content from, relative to the working directory. If not provided, does not print content.",
+            },
+        },
+        "required": []
+    },
+)

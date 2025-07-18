@@ -1,4 +1,6 @@
 import os
+import google.generativeai as genai
+from google.generativeai import types
 
 
 def write_file(working_directory, file_path, content):
@@ -20,3 +22,22 @@ def write_file(working_directory, file_path, content):
     except Exception as e:
         error_message = str(e)
         return f'Error: {error_message}'
+
+schema_write_file = types.FunctionDeclaration(
+    name="write_file",
+    description="Creates/overwrites listed file with provided content, constrained to the working directory.",
+    parameters={
+        "type": "OBJECT",
+        "properties": {
+            "file_path": {
+                "type": "STRING",
+                "description": "File to which the content is written, constrained to the working directory."
+            },
+            "content": {
+                "type": "STRING",
+                "description": "Content written to file, constrained to the working directory."
+            }
+        },
+        "required": []
+    },
+)
