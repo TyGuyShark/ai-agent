@@ -6,6 +6,7 @@ from functions.write_file import write_file
 import google.generativeai as genai
 
 def call_function(function_call_part, verbose=False):
+
     if verbose:
         print(f"Calling function: {function_call_part.name}({function_call_part.args})")
     else:
@@ -27,7 +28,7 @@ def call_function(function_call_part, verbose=False):
                 genai.protos.Part(
                     function_response=genai.protos.FunctionResponse( # Pass a FunctionResponse object
                         name=function_call_part.name,
-                        response={"error": f"Unknown function: {function_name}"},
+                        response={"error": f"Unknown function: {function_call_part.name}"},
                     )
                 )
             ],

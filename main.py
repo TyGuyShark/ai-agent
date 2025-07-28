@@ -11,22 +11,84 @@ import google.generativeai as genai
 from google.generativeai import types
 from google.protobuf.json_format import MessageToDict
 
+
+def cont_to_dict(content):
+    parts_as_dicts = []
+    for part in content.parts:
+        if hasattr(part, "function_call") and part.function_call is not None:
+            # Make a dict representing the function_call
+            parts_as_dicts.append({
+                "function_call": {
+                    "name": part.function_call.name,
+                    "args": part.function_call.args
+                }
+            })
+        elif hasattr(part, "text") and part.text is not None:
+            # Make a dict for the text
+            parts_as_dicts.append({"text": part.text})
+        # You could handle more types here as needed
+
+    return {
+        "role": content.role,
+        "parts": parts_as_dicts
+    }
+
+def generate_content(messages, verbose=False, model=None):
+    for i in range(0, 20):
+        try:
+            response = model.generate_content(messages)
+
+            function_calls_found = False
+            for candidate in response.candidates:
+                messages.append(candidate.content)
+
+                # Only process parts that have valid function calls
+                valid_function_calls = []
+                for part in candidate.content.parts:
+                    if hasattr(part, 'function_call') and part.function_call.name:
+                        valid_function_calls.append(part.function_call)
+
+                # Execute valid function calls
+                for function_call in valid_function_calls:
+                    function_calls_found = True
+                    if verbose:
+                        print(f" - Calling function: {function_call.name}")
+
+                    function_call_result = call_function(function_call, verbose)
+                    messages.append(function_call_result)
+
+            if not function_calls_found:
+                print(response.text)
+                break
+
+        except Exception as e:
+            print(f"Error: {e}")
+            break
+
+    return response
+
 def main():
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
     genai.configure(api_key=api_key)
 
     system_prompt = """
-    You are a helpful AI coding agent.
+    You are a helpful AI coding agent with access to file system tools.
 
-    When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
+    When a user asks about code or files, you should:
+    1. First use get_files_info to explore the directory structure
+    2. Use get_file_content to read relevant files
+    3. Use run_python_file to execute code if needed
+    4. Use write_file to create or modify files if requested
 
-    - List files and directories
-    - Read file contents
-    - Execute Python files with optional arguments
-    - Write or overwrite files
+    You have access to these functions:
+    - get_files_info: List files and directories
+    - get_file_content: Read file contents  
+    - run_python_file: Execute Python files with optional arguments
+    - write_file: Write or overwrite files
 
-    All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
+    Always start by exploring the file system to understand the codebase before answering questions.
+    All paths should be relative to the working directory.
     """
 
     user_prompt = ''
@@ -51,45 +113,20 @@ def main():
         system_instruction=system_prompt
     )
 
-    response = model.generate_content(user_prompt)
+    messages = [genai.protos.Content(role="user", parts=[genai.protos.Part(text=user_prompt)])]
+    verbose = len(sys.argv) > 2 and sys.argv[2] == "--verbose"
+    response = generate_content(messages, verbose, model)
 
     prompt_tokens = response.usage_metadata.prompt_token_count
     response_tokens = response.usage_metadata.candidates_token_count
 
-    if len(sys.argv) > 2 and sys.argv[2] == "--verbose":
+    if verbose:
         print(f"User prompt: {user_prompt}")
         print(f"Prompt tokens: {prompt_tokens}")
         print(f"Response tokens: {response_tokens}")
 
     print()
 
-    # Check if there are function calls in the response
-    function_calls_found = False
-    for candidate in response.candidates:
-        for part in candidate.content.parts:
-            if hasattr(part, 'function_call'):
-                function_calls_found = True
-
-                # Check if verbose is enabled
-                verbose = len(sys.argv) > 2 and sys.argv[2] == "--verbose"
-
-                # Call the function
-                function_call_result = call_function(part.function_call, verbose)
-
-                # Handle the result according to the lesson requirements
-                if not function_call_result.parts[0].function_response.response:
-                    raise Exception("Function call failed to return a response")
-
-                if verbose:
-                    result_obj = function_call_result.parts[0].function_response.response
-                    if "result" in result_obj:
-                        print(f"-> {result_obj['result']}")
-                    elif "error" in result_obj:
-                        print(f"-> ERROR: {result_obj['error']}")
-                    else:
-                        print(f"-> Unknown response: {result_obj}")
-    if not function_calls_found:
-        print(response.text)
 
 
 if __name__ == "__main__":

@@ -4,8 +4,11 @@ from google.generativeai import types
 
 
 def get_files_info(working_directory, directory=None):
-    if directory is None:
-        directory = ""
+    if not directory:
+        directory = "."
+
+    # Remove redundant leading elements and ensure it's relative
+    directory = os.path.relpath(directory, start="calculator")
     full_path = os.path.join(working_directory, directory)
     working_dir_abs = os.path.abspath(working_directory)
     target_path_abs = os.path.abspath(full_path)
